@@ -1,0 +1,58 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ dev, main ]
+
+  # Run every biweekly to discover failures due to environment changes
+  schedule:
+    - cron: '0 0 1,15 * *'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest # SQL Server LocalDB used in tests requires Windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run build and tests
+        run: ./Build.ps1
+        shell: pwsh
+
+      - name: Upload binaries artifact for InferSharp job
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin
+          path: src\Serilog.Sinks.MSSqlServer\bin\Release\net8.0
+
+      - name: Upload testresults artifact with code coverage file
+        uses: actions/upload-artifact@v4
+        with:
+          name: testresults
+          path: test\Serilog.Sinks.MSSqlServer.Tests\TestResults
+
+  infersharp:
+    runs-on: ubuntu-latest # Container action used by Infer# requires Linux
+    needs: build-and-test
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Download binaries artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bin
+          path: bin
+
+      - name: Run Infer#
+        uses: microsoft/infersharpaction@v1.5
+        with:
+          binary-path: bin
+
+      - name: Upload SARIF output to GitHub Security Center
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: infer-out/report.sarif

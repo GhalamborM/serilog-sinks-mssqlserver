@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    branches: [ dev, main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-perftest-and-release:
+    runs-on: windows-latest # Build on Windows to ensure .NET Framework targets
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from csproj
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Extract the version from the .csproj file using PowerShell XML parsing
+          [xml]$csproj = Get-Content 'src/Serilog.Sinks.MSSqlServer/Serilog.Sinks.MSSqlServer.csproj'
+          $version = $csproj.Project.PropertyGroup.VersionPrefix
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+          # Check if the tag already exists in git
+          $tagExists = git tag -l "v$version"
+          if ($tagExists) {
+              Write-Host "Tag v$version already exists"
+              exit 1
+          }
+        shell: pwsh
+
+      - name: Run build
+        run: ./Build.ps1 -SkipTests -SkipSamples
+        shell: pwsh
+
+      - name: Run performance tests
+        run: ./RunPerfTests.ps1 -Filter "*QuickBenchmarks*"
+        shell: pwsh
+
+      - name: Upload perf test results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: perftestresults
+          path: artifacts\perftests
+
+      - name: Get last commit message
+        id: last_commit
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git log -1 --pretty=%B > last_commit_message.txt
+        shell: pwsh
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main' && success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $baseFileName = "Serilog.Sinks.MSSqlServer.${{ env.VERSION }}"
+
+          $nupkgFile = Get-ChildItem -Path "artifacts/$baseFileName*.nupkg" | Select-Object -First 1
+          $snupkgFile = Get-ChildItem -Path "artifacts/$baseFileName*.snupkg" | Select-Object -First 1
+
+          if (-not $nupkgFile) { Write-Error "nupkg file not found" ; exit 1 }
+          if (-not $snupkgFile) { Write-Error "snupkg file not found" ; exit 1 }
+
+          $nupkgFilePath = $nupkgFile.FullName -replace '\\', '/'
+          $snupkgFilePath = $snupkgFile.FullName -replace '\\', '/'
+
+          Write-Host "Uploading files: $nupkgFilePath, $snupkgFilePath"
+
+          gh release create v${{ env.VERSION }} `
+            --title "v${{ env.VERSION }}" `
+            --notes "$(Get-Content last_commit_message.txt)" `
+            $nupkgFilePath $snupkgFilePath
+        shell: pwsh
+
+      - name: Publish to nuget.org
+        run: |
+          nuget push artifacts\*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }}
+        shell: pwsh

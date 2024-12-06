@@ -8,14 +8,25 @@ namespace Serilog.Sinks.MSSqlServer.Tests.Dependencies
     [Trait(TestCategory.TraitName, TestCategory.Unit)]
     public class SinkDependenciesFactoryTests
     {
-        private const string _connectionString = "Server=localhost;Database=LogTest;Integrated Security=SSPI;";
+        private const string _connectionString = "Server=localhost;Database=LogTest;Integrated Security=SSPI;Encrypt=False;";
         private readonly MSSqlServerSinkOptions _sinkOptions;
-        private readonly Serilog.Sinks.MSSqlServer.ColumnOptions _columnOptions;
+        private readonly MSSqlServer.ColumnOptions _columnOptions;
 
         public SinkDependenciesFactoryTests()
         {
             _sinkOptions = new MSSqlServerSinkOptions { TableName = "LogEvents" };
-            _columnOptions = new Serilog.Sinks.MSSqlServer.ColumnOptions();
+            _columnOptions = new MSSqlServer.ColumnOptions();
+        }
+
+        [Fact]
+        public void CreatesSinkDependenciesWithSqlDatabaseCreator()
+        {
+            // Act
+            var result = SinkDependenciesFactory.Create(_connectionString, _sinkOptions, null, _columnOptions, null);
+
+            // Assert
+            Assert.NotNull(result.SqlDatabaseCreator);
+            Assert.IsType<SqlDatabaseCreator>(result.SqlDatabaseCreator);
         }
 
         [Fact]
@@ -27,17 +38,6 @@ namespace Serilog.Sinks.MSSqlServer.Tests.Dependencies
             // Assert
             Assert.NotNull(result.SqlTableCreator);
             Assert.IsType<SqlTableCreator>(result.SqlTableCreator);
-        }
-
-        [Fact]
-        public void CreatesSinkDependenciesWithDataTableCreator()
-        {
-            // Act
-            var result = SinkDependenciesFactory.Create(_connectionString, _sinkOptions, null, _columnOptions, null);
-
-            // Assert
-            Assert.NotNull(result.DataTableCreator);
-            Assert.IsType<DataTableCreator>(result.DataTableCreator);
         }
 
         [Fact]
@@ -59,7 +59,7 @@ namespace Serilog.Sinks.MSSqlServer.Tests.Dependencies
 
             // Assert
             Assert.NotNull(result.SqlLogEventWriter);
-            Assert.IsType<SqlLogEventWriter>(result.SqlLogEventWriter);
+            Assert.IsType<SqlInsertStatementWriter>(result.SqlLogEventWriter);
         }
 
         [Fact]

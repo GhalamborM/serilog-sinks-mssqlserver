@@ -23,7 +23,7 @@ namespace CombinedConfigDemo
             var columnOptionsSection = configuration.GetSection("Serilog:ColumnOptions");
             var sinkOptionsSection = configuration.GetSection("Serilog:SinkOptions");
 
-            // Legacy interace - do not use this anymore
+            // Legacy interface - do not use this anymore
             //Log.Logger = new LoggerConfiguration()
             //    .WriteTo.MSSqlServer(
             //        connectionString: _connectionStringName,
@@ -49,7 +49,7 @@ namespace CombinedConfigDemo
                     columnOptionsSection: columnOptionsSection)
                 .CreateLogger();
 
-            Log.Information("Hello {Name} from thread {ThreadId}", Environment.GetEnvironmentVariable("USERNAME"), Thread.CurrentThread.ManagedThreadId);
+            Log.Information("Hello {Name} from thread {ThreadId}", Environment.GetEnvironmentVariable("USERNAME"), Environment.CurrentManagedThreadId);
 
             Log.Warning("No coins remain at position {@Position}", new { Lat = 25, Long = 134 });
 

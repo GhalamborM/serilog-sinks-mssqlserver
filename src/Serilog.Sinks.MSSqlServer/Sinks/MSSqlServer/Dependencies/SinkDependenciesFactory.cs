@@ -2,6 +2,7 @@
 using Serilog.Formatting;
 using Serilog.Sinks.MSSqlServer.Output;
 using Serilog.Sinks.MSSqlServer.Platform;
+using Serilog.Sinks.MSSqlServer.Platform.SqlClient;
 
 namespace Serilog.Sinks.MSSqlServer.Dependencies
 {
@@ -17,32 +18,46 @@ namespace Serilog.Sinks.MSSqlServer.Dependencies
             columnOptions = columnOptions ?? new ColumnOptions();
             columnOptions.FinalizeConfigurationForSinkConstructor();
 
-            var sqlConnectionFactory =
-                new SqlConnectionFactory(connectionString,
-                    sinkOptions?.UseAzureManagedIdentity ?? default,
-                    new AzureManagedServiceAuthenticator(
-                        sinkOptions?.UseAzureManagedIdentity ?? default,
-                        sinkOptions.AzureServiceTokenProviderResource,
-                        sinkOptions.AzureTenantId));
+            // Add 'Enlist=false', so that ambient transactions (TransactionScope) will not affect/rollback logging
+            // unless sink option EnlistInTransaction is set to true.
+            var sqlConnectionStringBuilderWrapper = new SqlConnectionStringBuilderWrapper(
+                connectionString, sinkOptions.EnlistInTransaction);
+            var sqlConnectionFactory = new SqlConnectionFactory(sqlConnectionStringBuilderWrapper);
+            var sqlCommandFactory = new SqlCommandFactory();
+            var dataTableCreator = new DataTableCreator(sinkOptions.TableName, columnOptions);
+            var sqlCreateTableWriter = new SqlCreateTableWriter(sinkOptions.SchemaName,
+                sinkOptions.TableName, columnOptions, dataTableCreator);
+
+            var sqlConnectionStringBuilderWrapperNoDb = new SqlConnectionStringBuilderWrapper(
+                connectionString, sinkOptions.EnlistInTransaction)
+            {
+                InitialCatalog = ""
+            };
+            var sqlConnectionFactoryNoDb =
+                new SqlConnectionFactory(sqlConnectionStringBuilderWrapperNoDb);
+            var sqlCreateDatabaseWriter = new SqlCreateDatabaseWriter(sqlConnectionStringBuilderWrapper.InitialCatalog);
+
             var logEventDataGenerator =
                 new LogEventDataGenerator(columnOptions,
                     new StandardColumnDataGenerator(columnOptions, formatProvider,
                         new XmlPropertyFormatter(),
                         logEventFormatter),
-                    new PropertiesColumnDataGenerator(columnOptions));
+                    new AdditionalColumnDataGenerator(
+                        new ColumnSimplePropertyValueResolver(),
+                        new ColumnHierarchicalPropertyValueResolver()));
 
             var sinkDependencies = new SinkDependencies
             {
+                SqlDatabaseCreator = new SqlDatabaseCreator(
+                    sqlCreateDatabaseWriter, sqlConnectionFactoryNoDb, sqlCommandFactory),
                 SqlTableCreator = new SqlTableCreator(
-                    sinkOptions.TableName, sinkOptions.SchemaName, columnOptions,
-                    new SqlCreateTableWriter(), sqlConnectionFactory),
-                DataTableCreator = new DataTableCreator(sinkOptions.TableName, columnOptions),
+                    sqlCreateTableWriter, sqlConnectionFactory, sqlCommandFactory),
                 SqlBulkBatchWriter = new SqlBulkBatchWriter(
+                    sinkOptions.TableName, sinkOptions.SchemaName, columnOptions.DisableTriggers,
+                    dataTableCreator, sqlConnectionFactory, logEventDataGenerator),
+                SqlLogEventWriter = new SqlInsertStatementWriter(
                     sinkOptions.TableName, sinkOptions.SchemaName,
-                    columnOptions.DisableTriggers, sqlConnectionFactory, logEventDataGenerator),
-                SqlLogEventWriter = new SqlLogEventWriter(
-                    sinkOptions.TableName, sinkOptions.SchemaName,
-                    sqlConnectionFactory, logEventDataGenerator)
+                    sqlConnectionFactory, sqlCommandFactory, logEventDataGenerator)
             };
 
             return sinkDependencies;

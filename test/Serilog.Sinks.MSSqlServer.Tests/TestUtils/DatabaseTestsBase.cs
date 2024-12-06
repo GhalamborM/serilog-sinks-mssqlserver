@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-#if NET452
-using System.Data.SqlClient;
-#else
-using Microsoft.Data.SqlClient;
-#endif
 using System.Globalization;
 using System.Linq;
 using Dapper;
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -120,6 +116,20 @@ namespace Serilog.Sinks.MSSqlServer.Tests.TestUtils
                 var logEvents = conn.Query<string>($"SELECT {columnName} FROM {DatabaseFixture.LogTableName}");
 
                 logEvents.Should().Contain(c => c == expectedValue);
+            }
+        }
+
+        protected static void VerifyStringColumnMultipleValuesWrittenAndNotWritten(
+            string columnName,
+            List<string> valuesWritten,
+            List<string> valuesNotWritten)
+        {
+            using (var conn = new SqlConnection(DatabaseFixture.LogEventsConnectionString))
+            {
+                var logEvents = conn.Query<string>($"SELECT {columnName} FROM {DatabaseFixture.LogTableName}");
+
+                valuesWritten?.ForEach(v =>  logEvents.Should().Contain(v));
+                valuesNotWritten?.ForEach(v =>  logEvents.Should().NotContain(v));
             }
         }
 

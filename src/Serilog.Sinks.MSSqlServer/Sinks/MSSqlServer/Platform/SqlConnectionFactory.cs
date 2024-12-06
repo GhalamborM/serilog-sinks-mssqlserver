@@ -6,29 +6,19 @@ namespace Serilog.Sinks.MSSqlServer.Platform
     internal class SqlConnectionFactory : ISqlConnectionFactory
     {
         private readonly string _connectionString;
-        private readonly bool _useAzureManagedIdentity;
-        private readonly IAzureManagedServiceAuthenticator _azureManagedServiceAuthenticator;
+        private readonly ISqlConnectionStringBuilderWrapper _sqlConnectionStringBuilderWrapper;
 
-        public SqlConnectionFactory(string connectionString, bool useAzureManagedIdentity, IAzureManagedServiceAuthenticator azureManagedServiceAuthenticator)
+        public SqlConnectionFactory(ISqlConnectionStringBuilderWrapper sqlConnectionStringBuilderWrapper)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new ArgumentNullException(nameof(connectionString));
-            }
+            _sqlConnectionStringBuilderWrapper = sqlConnectionStringBuilderWrapper
+                ?? throw new ArgumentNullException(nameof(sqlConnectionStringBuilderWrapper));
 
-            _connectionString = connectionString;
-            _useAzureManagedIdentity = useAzureManagedIdentity;
-            _azureManagedServiceAuthenticator = azureManagedServiceAuthenticator
-                ?? throw new ArgumentNullException(nameof(azureManagedServiceAuthenticator));
+            _connectionString = _sqlConnectionStringBuilderWrapper.ConnectionString;
         }
 
         public ISqlConnectionWrapper Create()
         {
-            var accessToken = _useAzureManagedIdentity
-                ? _azureManagedServiceAuthenticator.GetAuthenticationToken().GetAwaiter().GetResult()
-                : default;
-
-            return new SqlConnectionWrapper(_connectionString, accessToken);
+            return new SqlConnectionWrapper(_connectionString);
         }
     }
 }

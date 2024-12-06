@@ -20,6 +20,8 @@ namespace Serilog.Sinks.MSSqlServer
             // Apply any defaults in the individual Standard Column constructors.
             Id = new IdColumnOptions();
             Level = new LevelColumnOptions();
+            TraceId = new TraceIdColumnOptions();
+            SpanId = new SpanIdColumnOptions();
             Properties = new PropertiesColumnOptions();
             Message = new MessageColumnOptions();
             MessageTemplate = new MessageTemplateColumnOptions();
@@ -84,10 +86,11 @@ namespace Serilog.Sinks.MSSqlServer
         /// index. Prior to SQL Server 2017 you must NOT use any NVARCHAR(MAX) columns, and
         /// this restriction includes the Standard Columns (you must change their size).
         /// </summary>
-        public bool ClusteredColumnstoreIndex { get; set; } = false;
+        public bool ClusteredColumnstoreIndex { get; set; }
 
         /// <summary>
         /// Indicates if triggers should be disabled when inserting log entries.
+        /// Only applies when SqlBulkCopy is used.
         /// </summary>
         public bool DisableTriggers { get; set; }
 
@@ -112,6 +115,16 @@ namespace Serilog.Sinks.MSSqlServer
         /// Options for the Level column.
         /// </summary>
         public LevelColumnOptions Level { get; private set; }
+
+        /// <summary>
+        /// Options for the TraceId column.
+        /// </summary>
+        public TraceIdColumnOptions TraceId { get; private set; }
+
+        /// <summary>
+        /// Options for the SpanId column.
+        /// </summary>
+        public SpanIdColumnOptions SpanId { get; private set; }
 
         /// <summary>
         /// Options for the Properties column.
@@ -152,6 +165,8 @@ namespace Serilog.Sinks.MSSqlServer
             {
                 case StandardColumn.Id: return Id;
                 case StandardColumn.Level: return Level;
+                case StandardColumn.TraceId: return TraceId;
+                case StandardColumn.SpanId: return SpanId;
                 case StandardColumn.TimeStamp: return TimeStamp;
                 case StandardColumn.LogEvent: return LogEvent;
                 case StandardColumn.Message: return Message;

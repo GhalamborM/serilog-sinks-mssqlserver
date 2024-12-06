@@ -27,8 +27,8 @@ namespace Serilog.Sinks.MSSqlServer
                 get => base.DataType;
                 set
                 {
-                    if (value != SqlDbType.NVarChar)
-                        throw new ArgumentException("The Standard Column \"LogEvent\" must be NVarChar.");
+                    if (!SqlDataTypes.VariableCharacterColumnTypes.Contains(value))
+                        throw new ArgumentException("The Standard Column \"LogEvent\" must be NVarChar or VarChar.");
                     base.DataType = value;
                 }
             }
@@ -37,13 +37,13 @@ namespace Serilog.Sinks.MSSqlServer
             /// Exclude properties from the LogEvent column if they are being saved to additional columns.
             /// Defaults to false for backwards-compatibility, but true is the recommended setting.
             /// </summary>
-            public bool ExcludeAdditionalProperties { get; set; } = false;
+            public bool ExcludeAdditionalProperties { get; set; }
 
             /// <summary>
             /// Whether to include Standard Columns in the LogEvent column (for backwards compatibility).
             /// Defaults to false for backwards-compatibility, but true is the recommended setting.
             /// </summary>
-            public bool ExcludeStandardColumns { get; set; } = false;
+            public bool ExcludeStandardColumns { get; set; }
         }
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2020 Serilog Contributors
+// Copyright 2024 Serilog Contributors
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ namespace Serilog.Sinks.MSSqlServer.Output
                     output.Write(",\"Rendering\":");
                     using (var sw = new StringWriter())
                     {
-                        format.Render(properties, sw);
+                        format.Render(properties, sw, CultureInfo.InvariantCulture);
                         JsonValueFormatter.WriteQuotedJsonString(sw.ToString(), output);
                     }
                     output.Write('}');

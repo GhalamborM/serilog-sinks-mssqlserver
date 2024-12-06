@@ -1,4 +1,5 @@
 ﻿using System;
+using Serilog.Core;
 
 namespace Serilog.Sinks.MSSqlServer
 {
@@ -16,6 +17,7 @@ namespace Serilog.Sinks.MSSqlServer
             BatchPostingLimit = MSSqlServerSink.DefaultBatchPostingLimit;
             BatchPeriod = MSSqlServerSink.DefaultPeriod;
             EagerlyEmitFirstEvent = true;
+            UseSqlBulkCopy = true;
         }
 
         internal MSSqlServerSinkOptions(
@@ -43,9 +45,19 @@ namespace Serilog.Sinks.MSSqlServer
         public string SchemaName { get; set; }
 
         /// <summary>
+        /// Flag to automatically create the log events database if it does not exist (default: false)
+        /// </summary>
+        public bool AutoCreateSqlDatabase { get; set; }
+
+        /// <summary>
         /// Flag to automatically create the log events table if it does not exist (default: false)
         /// </summary>
         public bool AutoCreateSqlTable { get; set; }
+
+        /// <summary>
+        /// Flag to make logging SQL commands take part in ambient transactions (default: false)
+        /// </summary>
+        public bool EnlistInTransaction { get; set; }
 
         /// <summary>
         /// Limits how many log events are written to the database per batch (default: 50)
@@ -63,18 +75,13 @@ namespace Serilog.Sinks.MSSqlServer
         public bool EagerlyEmitFirstEvent { get; set; }
 
         /// <summary>
-        /// Flag to enable SQL authentication using Azure Managed Identities (default: false)
+        /// A switch allowing the pass-through minimum level to be changed at runtime
         /// </summary>
-        public bool UseAzureManagedIdentity { get; set; }
+        public LoggingLevelSwitch LevelSwitch { get; set; }
 
         /// <summary>
-        /// Azure service token provider to be used for Azure Managed Identities
+        /// Flag to use <see cref="Microsoft.Data.SqlClient.SqlBulkCopy"/> instead of individual INSERT statements (default: true)
         /// </summary>
-        public string AzureServiceTokenProviderResource { get; set; }
-
-        /// <summary>
-        /// ID of the tenant where the Azure resource exists
-        /// </summary>
-        public string AzureTenantId { get; set; }
+        public bool UseSqlBulkCopy { get; set; }
     }
 }

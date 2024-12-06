@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using static System.FormattableString;
 
 namespace Serilog.Sinks.MSSqlServer
 {
@@ -11,6 +13,8 @@ namespace Serilog.Sinks.MSSqlServer
         private SqlDbType _dataType = SqlDbType.VarChar; // backwards-compatibility default
         private string _columnName = string.Empty;
         private string _propertyName;
+        private bool _resolveHierarchicalPropertyName = true;
+        private readonly List<string> _propertyNameHierarchy = new List<string>();
 
         /// <summary>
         /// Default constructor.
@@ -38,13 +42,13 @@ namespace Serilog.Sinks.MSSqlServer
             AllowNull = dataColumn.AllowDBNull;
 
             if (!SqlDataTypes.ReverseTypeMap.ContainsKey(dataColumn.DataType))
-                throw new ArgumentException($".NET type {dataColumn.DataType} does not map to a supported SQL column data type.");
+                throw new ArgumentException(Invariant($".NET type {dataColumn.DataType} does not map to a supported SQL column data type."));
 
             DataType = SqlDataTypes.ReverseTypeMap[dataColumn.DataType];
             DataLength = dataColumn.MaxLength;
 
             if (DataLength == 0 && SqlDataTypes.DataLengthRequired.Contains(DataType))
-                throw new ArgumentException($".NET type {dataColumn.DataType} maps to a SQL column data type requiring a non-zero DataLength property.");
+                throw new ArgumentException(Invariant($".NET type {dataColumn.DataType} maps to a SQL column data type requiring a non-zero DataLength property."));
         }
 
         /// <summary>
@@ -74,7 +78,7 @@ namespace Serilog.Sinks.MSSqlServer
             set
             {
                 if (!SqlDataTypes.SystemTypeMap.ContainsKey(value))
-                    throw new ArgumentException($"SQL column data type {value} is not supported by this sink.");
+                    throw new ArgumentException(Invariant($"SQL column data type {value} is not supported by this sink."));
                 _dataType = value;
             }
         }
@@ -94,7 +98,7 @@ namespace Serilog.Sinks.MSSqlServer
         /// Determines whether a non-clustered index is created for this column. Compound indexes are not
         /// supported for auto-created log tables. This property is only used when auto-creating a log table.
         /// </summary>
-        public bool NonClusteredIndex { get; set; } = false;
+        public bool NonClusteredIndex { get; set; }
 
         /// <summary>
         /// The name of the Serilog property to use as the value when filling the DataTable.
@@ -103,14 +107,42 @@ namespace Serilog.Sinks.MSSqlServer
         public string PropertyName
         {
             get => _propertyName ?? ColumnName;
-            set => _propertyName = value;
+            set
+            {
+                _propertyName = value;
+                ParseHierarchicalPropertyName();
+            }
         }
+
+        /// <summary>
+        /// Controls whether hierarchical expressions in `PropertyName` are evaluated. The default is `true`.
+        /// </summary>
+        public bool ResolveHierarchicalPropertyName
+        {
+            get => _resolveHierarchicalPropertyName;
+            set
+            {
+                _resolveHierarchicalPropertyName = value;
+                ParseHierarchicalPropertyName();
+            }
+        }
+
+        /// <summary>
+        /// List of the hierachical parts of a property name and all sub properties (e.g. Property.Settings.EventName)
+        /// </summary>
+        internal IReadOnlyList<string> PropertyNameHierarchy
+            => _propertyNameHierarchy;
+
+        /// <summary>
+        /// True if property name is hierarchical (e.g. Property.Settings.EventName)
+        /// </summary>
+        internal bool HasHierarchicalPropertyName
+            => _propertyNameHierarchy.Count > 1;
 
         // Set by the constructors of the Standard Column classes that inherit from this;
         // allows Standard Columns and user-defined columns to coexist but remain identifiable
         // and allows casting back to the Standard Column without a lot of switch gymnastics.
-        internal StandardColumn? StandardColumnIdentifier { get; set; } = null;
-        internal Type StandardColumnType { get; set; } = null;
+        internal StandardColumn? StandardColumnIdentifier { get; set; }
 
         /// <summary>
         /// Converts a SQL sink SqlColumn object to a System.Data.DataColumn object. The original
@@ -129,7 +161,7 @@ namespace Serilog.Sinks.MSSqlServer
             if (SqlDataTypes.DataLengthRequired.Contains(DataType))
             {
                 if (DataLength == 0)
-                    throw new ArgumentException($"Column \"{ColumnName}\" is of type {DataType.ToString().ToUpperInvariant()} which requires a non-zero DataLength.");
+                    throw new ArgumentException(Invariant($"Column \"{ColumnName}\" is of type {DataType.ToString().ToUpperInvariant()} which requires a non-zero DataLength."));
 
                 dataColumn.MaxLength = DataLength;
             }
@@ -145,9 +177,22 @@ namespace Serilog.Sinks.MSSqlServer
         internal void SetDataTypeFromConfigString(string requestedSqlType)
         {
             if (!SqlDataTypes.TryParseIfSupported(requestedSqlType, out SqlDbType sqlType))
-                throw new ArgumentException($"SQL column data type {requestedSqlType} is not recognized or not supported by this sink.");
+                throw new ArgumentException(Invariant($"SQL column data type {requestedSqlType} is not recognized or not supported by this sink."));
 
             DataType = sqlType;
+        }
+
+        private void ParseHierarchicalPropertyName()
+        {
+            _propertyNameHierarchy.Clear();
+            if (ResolveHierarchicalPropertyName)
+            {
+                _propertyNameHierarchy.AddRange(PropertyName.Split('.'));
+            }
+            else
+            {
+                _propertyNameHierarchy.Add(PropertyName);
+            }
         }
     }
 }

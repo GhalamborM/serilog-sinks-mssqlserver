@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using Serilog.Configuration;
+using static System.FormattableString;
 
 namespace Serilog.Sinks.MSSqlServer.Configuration
 {
@@ -104,6 +105,8 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
             SetCommonColumnOptions(config.Id, columnOptions.Id);
             SetCommonColumnOptions(config.Level, columnOptions.Level);
             SetCommonColumnOptions(config.LogEvent, columnOptions.LogEvent);
+            SetCommonColumnOptions(config.TraceId, columnOptions.TraceId);
+            SetCommonColumnOptions(config.SpanId, columnOptions.SpanId);
             SetCommonColumnOptions(config.Message, columnOptions.Message);
             SetCommonColumnOptions(config.MessageTemplate, columnOptions.MessageTemplate);
             SetCommonColumnOptions(config.PropertiesColumn, columnOptions.Properties);
@@ -138,7 +141,7 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 foreach (var standardCol in columnOptions.Store)
                 {
                     var stdColOpts = columnOptions.GetStandardColumnOptions(standardCol);
-                    if (pkName.Equals(stdColOpts.ColumnName, StringComparison.InvariantCultureIgnoreCase))
+                    if (pkName.Equals(stdColOpts.ColumnName, StringComparison.OrdinalIgnoreCase))
                     {
                         columnOptions.PrimaryKey = stdColOpts;
                         break;
@@ -149,7 +152,7 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 {
                     foreach (var col in columnOptions.AdditionalColumns)
                     {
-                        if (pkName.Equals(col.ColumnName, StringComparison.InvariantCultureIgnoreCase))
+                        if (pkName.Equals(col.ColumnName, StringComparison.OrdinalIgnoreCase))
                         {
                             columnOptions.PrimaryKey = col;
                             break;
@@ -158,7 +161,8 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 }
 
                 if (columnOptions.PrimaryKey == null)
-                    throw new ArgumentException($"Could not match the configured primary key column name \"{pkName}\" with a data column in the table.");
+                    throw new ArgumentException(Invariant(
+                        $"Could not match the configured primary key column name \"{pkName}\" with a data column in the table."));
             }
         }
     }

@@ -1,3 +1,105 @@
+# 8.1.0
+* Implemented #542: Column option `ResolveHierarchicalPropertyName` to force non-hierarchical handling
+* Removed unnecessary exception handlers and let Serilog Core do the SelfLog()
+* Refactoring and performance optimizations in batched and audit sink
+* Create perftest result on release
+* Updated issue template
+* Updated editorconfig
+* Added specific documentation about when SQL SELECT permission is not required
+
+# 8.0.0
+* Updated to .NET 8
+* Updated nearly all dependencies
+* Improved build script (build samples, fail on vulns, ...)
+* Removed some obsolete vulnerability fix dependencies
+* Fixed missing dependency in AppConfigDemo sample
+
+# 7.0.2
+* Fixed issue #580: Removed deprecated transitive dependency on Microsoft.NETCore.Targets by removing runtime identifier (thanks to @david-brink-talogy)
+* Fixed issues #540 and #541 in README
+* Added performance tests including a GitHub actions workflow
+* Minor cleanups and fixes
+
+# 7.0.1
+* Fixed issue #567: .NET Framework assemblies were not built properly
+* Consolidated PR validation action workflows and updated some task versions
+
+# 7.0.0
+* Fixed issue #543: Update to Serilog v4, remove reference to Serilog.Sinks.PeriodicBatching (thanks to @cancakar35)
+* Full automatic release and run on ubuntu-latest agent
+* Added developer documentation
+* Enabled .NET package validation
+
+# 6.7.1
+* Fixed issue #552 by downgrading SqlClient dependency to 5.1.6 which is LTS and fixed the vulnerabilities referenced in issue #544
+* Fixed vulnerabilities by removing all System.* 4 versions as recommended by Microsoft (https://devblogs.microsoft.com/nuget/nugetaudit-2-0-elevating-security-and-trust-in-package-management/#system-net-http-and-system-text-regularexpressions, issue #544)
+* Fixed vulnerability by updating xunit to 2.9.0 (issue #544)
+* Fixed vulnerability by directly referencing transitive dependency System.Formats.Asn1 (https://github.com/advisories/GHSA-447r-wph3-92pm, issue #544)
+* Fixed vulnerability by directly referencing transitive dependency System.Private.Uri (https://github.com/advisories/GHSA-xhfc-gr8f-ffwc, issue #544)
+* Activated NuGet Audit for high and critical vulnerabilities in direct and transitive dependencies for all projects (https://devblogs.microsoft.com/nuget/nugetaudit-2-0-elevating-security-and-trust-in-package-management/)
+
+# 6.7.0
+* Fixed some of the vulnerabilities referenced in issue #544 by updating SqlClient dependency to 5.2.1
+* Update codeql-action to v3 before deprecation
+
+# 6.6.1
+* Fixed issue #515: Cannot use .AuditTo with SpanId or TraceId (thanks to @Kolthor and @vui611)
+* Fixed issue #530: Document default value of AllowNull
+* Fixed issue #528: Wrong period in README.md sample
+
+# 6.6.0
+* Fixed issue #509: Add SqlInsertStatementWriter which uses INSERT statements instead of SqlBulkCopy (thanks to @BrettJaner)
+
+# 6.5.2
+* Fixed issue #517: Updated Microsoft.Data.SqlClient to 5.1.5 to fix  CVE-2024-21319
+
+# 6.5.1
+* Fixed issue #505: NVarChar Columns with 1 data length gets their values truncated into empty strings (thanks to @Whinarn)
+* Updated Microsoft.Data.SqlClient to 5.1.4 to fix CVE-2024-0056 (https://github.com/advisories/GHSA-98g6-xh36-x2p7)
+
+# 6.5.0
+* Implemented #488: Support OpenTelemetry TraceId and SpanId as provided by Serilog core
+* Include README in NuGet package
+
+# 6.4.0
+* Implemented #436: Truncate additional columns (thanks to @nhart12)
+* Fixed issue #489: allow varchar on standard columns (thanks to @nhart12)
+
+# 6.3.0
+* Implemented #360: Automatic DB creation
+
+# 6.2.0
+* Implemented #454: LoggingLevelSwitch support to allows log level manipulation at runtime.
+* Fixed issue #458: Error if enrich nullable int columns by null value
+* Added CodeQL code scanning
+* Generate code coverage file when running tests in Build.ps1
+
+# 6.1.0
+* Fixed issues #207, #435, #419 & #292: Resolve hierarchical property expressions for additional columns
+* Fixed issue #432: Write full exception info to SelfLog
+* Use NuGet central package management
+* Added PR code security scanning (CodeQL & DevSkim)
+* Reorganizations & small fixes
+
+# 6.0.0
+* Updated .NET target frameworks (removed soon obsolete .NET Core 3.1, added .NET 6.0 LTS).
+* Fixed issue #417: removed obsolete and vulnerable Microsoft.Azure.Services.AppAuthentication.
+* Updated SqlClient to 5.0.1 (breaking change: https://github.com/serilog-mssql/serilog-sinks-mssqlserver#release-600).
+* Updated all other dependencies to latest versions.
+* Removed obsolete System.Config extension methods (only for .NET Framework 4.5.2 which is no longer supported).
+
+# 5.8.0
+* Partial fix of issue #417: Update SqlClient to 3.0.0 etc. to fix high severity vulnerability
+* Removed support for obsolete .NET Framework 4.5.2
+* Fixed issue #408: wrong sample in README
+
+# 5.7.1
+* Exclude logging from DB transactions and added sink option `EnlistInTransaction` (thanks to @ @Daniel-Svensson for the idea and original PR).
+* Fixed issue #209: Add trimming to rendered message and message template (thanks to @studiopasokon)
+* Fixed documentation regarding supported .NET versions (thanks to @GhalamborM).
+* Migrated sink to new GitHub and nuget.org organizations.
+* Use GitHub Actions for build including automatic release documentation.
+
 # 5.7.0
 * Fixed a wrong information in README.md regarding SQL Server compatibility (thanks to @domagojmedo).
 * Fixed bug #382 System.FormatExceotion due to invalid format strings when using SelfLog (thanks to @sommmen)
@@ -33,7 +135,7 @@
 * Implemented Enhancement #182: configurable property names for custom columns (thanks to @rocknet for the contribution).
 * Lots of refactoring and new unit tests.
 
-# 5.3.0  
+# 5.3.0
 Code quality release.
  * Added code analysis and editorconfig rules based on Microsoft standards.
  * Fixed code analysis errors where possible and added justified suppressions the few remainig.
@@ -63,22 +165,22 @@ Code quality release.
 
 # 4.0.0
  * Serilog 2.0
- * [Documentation fix](https://github.com/serilog/serilog-sinks-mssqlserver/pull/32)
+ * [Documentation fix](https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/32)
 
 # 2.0.33
- * Option added to exclude redundant properties from serialized JSON in column LogEvent. (https://github.com/serilog/serilog-sinks-mssqlserver/pull/27)
+ * Option added to exclude redundant properties from serialized JSON in column LogEvent. (https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/27)
 
 # 2.0.32
- * Safe conversion of data types. Also included selflog for bulk operation errors. (https://github.com/serilog/serilog-sinks-mssqlserver/pull/4)
+ * Safe conversion of data types. Also included selflog for bulk operation errors. (https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/4)
 
 # 2.0.31
- * Added the ability to configure additional columns via XML configuration (https://github.com/serilog/serilog-sinks-mssqlserver/pull/6)
+ * Added the ability to configure additional columns via XML configuration (https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/6)
 
 # 2.0.30
- * You can optionally save the log event inside the database too. Also added ability to exclude the properties if they are saved already inside additional columns. (https://github.com/serilog/serilog-sinks-mssqlserver/pull/7)
+ * You can optionally save the log event inside the database too. Also added ability to exclude the properties if they are saved already inside additional columns. (https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/7)
 
 # 2.0.28
- * Added explicit column mappings (https://github.com/serilog/serilog-sinks-mssqlserver/pull/10) 
+ * Added explicit column mappings (https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/10)
 
 # 2.0.27
  * Option added to automatically create a database table (by Kiran Varsani (https://github.com/varsanikp))
@@ -87,7 +189,7 @@ Code quality release.
  * Ability to add additional properties as columns in the database
 
 # 2.0.1
- * Option to [write times in UTC](https://github.com/serilog/serilog-sinks-mssqlserver/pull/1)
+ * Option to [write times in UTC](https://github.com/serilog-mssql/serilog-sinks-mssqlserver/pull/1)
 
 # 1.5
  * Moved from serilog/serilog

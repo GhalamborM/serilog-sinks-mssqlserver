@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Threading.Tasks;
 using Moq;
 using Serilog.Events;
@@ -16,12 +15,12 @@ namespace Serilog.Sinks.MSSqlServer.Tests
     {
         private readonly MSSqlServerSinkOptions _sinkOptions;
         private readonly SinkDependencies _sinkDependencies;
-        private readonly Mock<IDataTableCreator> _dataTableCreatorMock;
-        private readonly Mock<ISqlTableCreator> _sqlTableCreatorMock;
+        private readonly Mock<ISqlCommandExecutor> _sqlDatabaseCreatorMock;
+        private readonly Mock<ISqlCommandExecutor> _sqlTableCreatorMock;
         private readonly Mock<ISqlBulkBatchWriter> _sqlBulkBatchWriter;
+        private readonly Mock<ISqlLogEventWriter> _sqlLogEventWriter;
         private readonly string _tableName = "tableName";
         private readonly string _schemaName = "schemaName";
-        private readonly DataTable _dataTable;
         private MSSqlServerSink _sut;
         private bool _disposedValue;
 
@@ -33,19 +32,17 @@ namespace Serilog.Sinks.MSSqlServer.Tests
                 SchemaName = _schemaName
             };
 
-            _dataTable = new DataTable(_tableName);
-            _dataTableCreatorMock = new Mock<IDataTableCreator>();
-            _dataTableCreatorMock.Setup(d => d.CreateDataTable())
-                .Returns(_dataTable);
-
-            _sqlTableCreatorMock = new Mock<ISqlTableCreator>();
+            _sqlDatabaseCreatorMock = new Mock<ISqlCommandExecutor>();
+            _sqlTableCreatorMock = new Mock<ISqlCommandExecutor>();
             _sqlBulkBatchWriter = new Mock<ISqlBulkBatchWriter>();
+            _sqlLogEventWriter = new Mock<ISqlLogEventWriter>();
 
             _sinkDependencies = new SinkDependencies
             {
-                DataTableCreator = _dataTableCreatorMock.Object,
+                SqlDatabaseCreator = _sqlDatabaseCreatorMock.Object,
                 SqlTableCreator = _sqlTableCreatorMock.Object,
-                SqlBulkBatchWriter = _sqlBulkBatchWriter.Object
+                SqlBulkBatchWriter = _sqlBulkBatchWriter.Object,
+                SqlLogEventWriter = _sqlLogEventWriter.Object
             };
         }
 
@@ -61,17 +58,6 @@ namespace Serilog.Sinks.MSSqlServer.Tests
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new MSSqlServerSink(_sinkOptions, null));
-        }
-
-        [Fact]
-        public void InitializeWithoutDataTableCreatorThrows()
-        {
-            // Arrange
-            _sinkDependencies.DataTableCreator = null;
-
-            // Act + assert
-            Assert.Throws<InvalidOperationException>(() =>
-                new MSSqlServerSink(_sinkOptions, _sinkDependencies));
         }
 
         [Fact]
@@ -97,13 +83,34 @@ namespace Serilog.Sinks.MSSqlServer.Tests
         }
 
         [Fact]
-        public void InitializeCallsDataTableCreator()
+        public void InitializeWithoutSqlLogEventWriterThrows()
+        {
+            // Arrange
+            _sinkDependencies.SqlLogEventWriter = null;
+
+            // Act + assert
+            Assert.Throws<InvalidOperationException>(() =>
+                new MSSqlServerSink(_sinkOptions, _sinkDependencies));
+        }
+
+        [Fact]
+        public void InitializeWithAutoCreateSqlDatabaseCallsSqlDatabaseCreator()
         {
             // Act
-            SetupSut(autoCreateSqlTable: false);
+            SetupSut(autoCreateSqlDatabase: true);
 
             // Assert
-            _dataTableCreatorMock.Verify(c => c.CreateDataTable(), Times.Once);
+            _sqlDatabaseCreatorMock.Verify(c => c.Execute(), Times.Once);
+        }
+
+        [Fact]
+        public void InitializeWithoutAutoCreateSqlDatabaseDoesNotCallSqlDatabaseCreator()
+        {
+            // Act
+            SetupSut(autoCreateSqlDatabase: false);
+
+            // Assert
+            _sqlDatabaseCreatorMock.Verify(c => c.Execute(), Times.Never);
         }
 
         [Fact]
@@ -113,7 +120,7 @@ namespace Serilog.Sinks.MSSqlServer.Tests
             SetupSut(autoCreateSqlTable: true);
 
             // Assert
-            _sqlTableCreatorMock.Verify(c => c.CreateTable(_dataTable), Times.Once);
+            _sqlTableCreatorMock.Verify(c => c.Execute(), Times.Once);
         }
 
         [Fact]
@@ -123,30 +130,49 @@ namespace Serilog.Sinks.MSSqlServer.Tests
             SetupSut(autoCreateSqlTable: false);
 
             // Assert
-            _sqlTableCreatorMock.Verify(c => c.CreateTable(It.IsAny<DataTable>()), Times.Never);
+            _sqlTableCreatorMock.Verify(c => c.Execute(), Times.Never);
         }
 
         [Fact]
-        public async Task EmitBatchAsyncCallsSqlLogEventWriter()
+        public async Task EmitBatchAsyncCallsSqlBulkBatchWriter()
         {
             // Arrange
             SetupSut();
             var logEvents = new List<LogEvent> { TestLogEventHelper.CreateLogEvent() };
-            _sqlBulkBatchWriter.Setup(w => w.WriteBatch(It.IsAny<IEnumerable<LogEvent>>(), _dataTable))
-                .Callback<IEnumerable<LogEvent>, DataTable>((e, d) =>
+            _sqlBulkBatchWriter.Setup(w => w.WriteBatch(It.IsAny<IEnumerable<LogEvent>>()))
+                .Callback<IEnumerable<LogEvent>>((e) =>
                  {
                      Assert.Same(logEvents, e);
                  });
 
             // Act
-            await _sut.EmitBatchAsync(logEvents).ConfigureAwait(false);
+            await _sut.EmitBatchAsync(logEvents);
 
             // Assert
-            _sqlBulkBatchWriter.Verify(w => w.WriteBatch(It.IsAny<IEnumerable<LogEvent>>(), _dataTable), Times.Once);
+            _sqlBulkBatchWriter.Verify(w => w.WriteBatch(It.IsAny<IEnumerable<LogEvent>>()), Times.Once);
         }
 
         [Fact]
-        public void OnEmpytBatchAsyncReturnsCompletedTask()
+        public async Task EmitBatchAsyncWithUseSqlBulkCopyFalseCallsSqlLogEventWriter()
+        {
+            // Arrange
+            SetupSut(useSqlBulkCopy: false);
+            var logEvents = new List<LogEvent> { TestLogEventHelper.CreateLogEvent() };
+            _sqlBulkBatchWriter.Setup(w => w.WriteBatch(It.IsAny<IEnumerable<LogEvent>>()))
+                .Callback<IEnumerable<LogEvent>>((e) =>
+                {
+                    Assert.Same(logEvents, e);
+                });
+
+            // Act
+            await _sut.EmitBatchAsync(logEvents);
+
+            // Assert
+            _sqlLogEventWriter.Verify(w => w.WriteEvents(It.IsAny<IEnumerable<LogEvent>>()), Times.Once);
+        }
+
+        [Fact]
+        public void OnEmptyBatchAsyncReturnsCompletedTask()
         {
             // Arrange
             SetupSut();
@@ -159,23 +185,33 @@ namespace Serilog.Sinks.MSSqlServer.Tests
         }
 
         [Fact]
-        public void DisposeCallsDisposeOnDataTable()
+        public void OnDisposeDisposesSqlBulkBatchWriterDependency()
         {
-            // Arrange
-            var dataTableDisposeCalled = false;
-            SetupSut();
-            _dataTable.Disposed += (s, e) => dataTableDisposeCalled = true;
-
-            // Act
-            _sut.Dispose();
+            // Arrange + act
+            using (new MSSqlServerSink(_sinkOptions, _sinkDependencies)) { }
 
             // Assert
-            Assert.True(dataTableDisposeCalled);
+            _sqlBulkBatchWriter.Verify(w => w.Dispose(), Times.Once);
         }
 
-        private void SetupSut(bool autoCreateSqlTable = false)
+        [Fact]
+        public void OnDisposeDisposesSqlLogEventWriterDependency()
         {
+            // Arrange + act
+            using (new MSSqlServerSink(_sinkOptions, _sinkDependencies)) { }
+
+            // Assert
+            _sqlLogEventWriter.Verify(w => w.Dispose(), Times.Once);
+        }
+
+        private void SetupSut(
+            bool autoCreateSqlDatabase = false,
+            bool autoCreateSqlTable = false,
+            bool useSqlBulkCopy = true)
+        {
+            _sinkOptions.AutoCreateSqlDatabase = autoCreateSqlDatabase;
             _sinkOptions.AutoCreateSqlTable = autoCreateSqlTable;
+            _sinkOptions.UseSqlBulkCopy = useSqlBulkCopy;
             _sut = new MSSqlServerSink(_sinkOptions, _sinkDependencies);
         }
 
@@ -184,7 +220,6 @@ namespace Serilog.Sinks.MSSqlServer.Tests
             if (!_disposedValue)
             {
                 _sut?.Dispose();
-                _dataTable?.Dispose();
                 _disposedValue = true;
             }
         }

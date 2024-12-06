@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
+using static System.FormattableString;
 
 namespace Serilog.Sinks.MSSqlServer.Configuration
 {
@@ -146,6 +147,18 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
             section = config.GetSection("messageTemplate");
             if (section != null)
                 SetCommonColumnOptions(section, columnOptions.MessageTemplate);
+
+            section = config.GetSection("traceId");
+            if (section != null)
+            {
+                SetCommonColumnOptions(section, columnOptions.TraceId);
+            }
+
+            section = config.GetSection("spanId");
+            if (section != null)
+            {
+                SetCommonColumnOptions(section, columnOptions.SpanId);
+            }
         }
 
         private static void ReadMiscColumnOptions(IConfigurationSection config, ColumnOptions columnOptions)
@@ -162,7 +175,7 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 foreach (var standardCol in columnOptions.Store)
                 {
                     var stdColcolumnOptions = columnOptions.GetStandardColumnOptions(standardCol);
-                    if (pkName.Equals(stdColcolumnOptions.ColumnName, StringComparison.InvariantCultureIgnoreCase))
+                    if (pkName.Equals(stdColcolumnOptions.ColumnName, StringComparison.OrdinalIgnoreCase))
                     {
                         columnOptions.PrimaryKey = stdColcolumnOptions;
                         break;
@@ -173,7 +186,7 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 {
                     foreach (var col in columnOptions.AdditionalColumns)
                     {
-                        if (pkName.Equals(col.ColumnName, StringComparison.InvariantCultureIgnoreCase))
+                        if (pkName.Equals(col.ColumnName, StringComparison.OrdinalIgnoreCase))
                         {
                             columnOptions.PrimaryKey = col;
                             break;
@@ -182,7 +195,7 @@ namespace Serilog.Sinks.MSSqlServer.Configuration
                 }
 
                 if (columnOptions.PrimaryKey == null)
-                    throw new ArgumentException($"Could not match the configured primary key column name \"{pkName}\" with a data column in the table.");
+                    throw new ArgumentException(Invariant($"Could not match the configured primary key column name \"{pkName}\" with a data column in the table."));
             }
         }
     }

@@ -1,55 +1,140 @@
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory = $false)]
+    [Switch]
+    $SkipTests,
+
+    [Parameter(Mandatory = $false)]
+    [Switch]
+    $SkipPerfTests,
+
+    [Parameter(Mandatory = $false)]
+    [Switch]
+    $SkipSamples
+)
+
 echo "build: Build started"
 
-Push-Location $PSScriptRoot
+try
+{
+    Push-Location "$PSScriptRoot"
 
-if(Test-Path .\artifacts) {
-	echo "build: Cleaning .\artifacts"
-	Remove-Item .\artifacts -Force -Recurse
-}
-
-& dotnet restore --no-cache
-
-$branch = @{ $true = $env:APPVEYOR_REPO_BRANCH; $false = $(git symbolic-ref --short -q HEAD) }[$env:APPVEYOR_REPO_BRANCH -ne $NULL];
-$revision = @{ $true = "{0:00000}" -f [convert]::ToInt32("0" + $env:APPVEYOR_BUILD_NUMBER, 10); $false = "local" }[$env:APPVEYOR_BUILD_NUMBER -ne $NULL];
-$suffix = @{ $true = ""; $false = "$($branch.Substring(0, [math]::Min(10,$branch.Length)))-$revision"}[$branch -eq "master" -and $revision -ne "local"]
-
-echo "build: Version suffix is $suffix"
-
-foreach ($src in ls src/*) {
-    Push-Location $src
-
-    echo "build: Packaging project in $src"
-
-    if ($suffix) {
-        & dotnet pack -c Release -o ..\..\artifacts --version-suffix=$suffix
-    } else {
-        & dotnet pack -c Release -o ..\..\artifacts
+    if (Test-Path .\artifacts)
+    {
+        echo "build: Cleaning .\artifacts"
+        Remove-Item .\artifacts -Force -Recurse
     }
-    if($LASTEXITCODE -ne 0) { exit 1 }    
 
+    echo "build: Restoring packages for solution"
+    & dotnet restore --no-cache
+    if ($LASTEXITCODE -ne 0)
+    {
+        echo "Error returned by dotnet restore. Aborting build."
+        exit 1
+    }
+
+    $branch = @{ $true = $env:GITHUB_REF_NAME; $false = $( git symbolic-ref --short -q HEAD ) }[$env:GITHUB_REF_NAME -ne $NULL]
+    $revision = @{ $true = "{0:00000}" -f [convert]::ToInt32("0" + $env:GITHUB_RUN_NUMBER, 10); $false = "local" }[$env:GITHUB_RUN_NUMBER -ne $NULL]
+    $suffix = @{ $true = ""; $false = "$($branch.Substring(0,[math]::Min(10, $branch.Length)) )-$revision" }[$branch -ne "dev" -and $revision -ne "local"]
+
+    echo "build: Version suffix is $suffix"
+
+    $sinkProjectPath = "$PSScriptRoot/src/Serilog.Sinks.MSSqlServer"
+    try
+    {
+        Push-Location "$sinkProjectPath"
+
+        echo "build: Packaging sink main project in $sinkProjectPath"
+        if ($suffix)
+        {
+            & dotnet pack -c Release -o ..\..\artifacts --version-suffix=$suffix
+        }
+        else
+        {
+            & dotnet pack -c Release -o ..\..\artifacts
+        }
+        if ($LASTEXITCODE -ne 0)
+        {
+            echo "Error returned by dotnet pack. Aborting build."
+            exit 1
+        }
+    }
+    finally
+    {
+        Pop-Location
+    }
+
+    if ($SkipTests -eq $false)
+    {
+        $testProjectPath = "$PSScriptRoot/test/Serilog.Sinks.MSSqlServer.Tests"
+        try
+        {
+            Push-Location "$testProjectPath"
+
+            # Run tests for different targets in sequence to avoid database tests
+            # to fail because of concurrency problems
+            foreach ($tfm in @( "net462", "net472", "net8.0" ))
+            {
+                echo "build: Testing project in $testProjectPath for target $tfm"
+                & dotnet test -c Release --collect "XPlat Code Coverage" --framework "$tfm" --results-directory "./TestResults/$tfm"
+                if ($LASTEXITCODE -ne 0)
+                {
+                    exit 2
+                }
+            }
+        }
+        finally
+        {
+            Pop-Location
+        }
+    }
+
+    if ($SkipPerfTests -eq $false)
+    {
+        # The performance benchmark tests should at least build without errors during PR validation
+        $perfTestProjectPath = "$PSScriptRoot/test/Serilog.Sinks.MSSqlServer.PerformanceTests"
+        try
+        {
+            Push-Location "$perfTestProjectPath"
+
+            echo "build: Building performance test project in $perfTestProjectPath"
+            & dotnet build -c Release
+            if ($LASTEXITCODE -ne 0)
+            {
+                exit 3
+            }
+        }
+        finally
+        {
+            Pop-Location
+        }
+    }
+
+    if ($SkipSamples -eq $false)
+    {
+        foreach ($src in Get-ChildItem "$PSScriptRoot/sample/*.csproj" -File -Recurse)
+        {
+            try
+            {
+                Push-Location $src.DirectoryName
+
+                echo "build: Building sample project $( $src.FullName )"
+                & dotnet build -c Release -o ..\..\artifacts
+                if ($LASTEXITCODE -ne 0)
+                {
+                    echo "Error returned by dotnet build. Aborting build."
+                    exit 4
+                }
+            }
+            finally
+            {
+                Pop-Location
+            }
+        }
+    }
+
+}
+finally
+{
     Pop-Location
 }
-
-foreach ($test in ls test/*.PerformanceTests) {
-    Push-Location $test
-
-    echo "build: Building performance test project in $test"
-
-    & dotnet build -c Release
-    if($LASTEXITCODE -ne 0) { exit 2 }
-
-    Pop-Location
-}
-
-foreach ($test in ls test/*.Tests) {
-    Push-Location $test
-
-    echo "build: Testing project in $test"
-
-    & dotnet test -c Release
-    if($LASTEXITCODE -ne 0) { exit 3 }
-
-    Pop-Location
-}
-
-Pop-Location

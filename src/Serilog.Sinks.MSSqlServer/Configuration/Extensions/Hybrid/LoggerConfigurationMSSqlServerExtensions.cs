@@ -1,4 +1,4 @@
-﻿// Copyright 2020 Serilog Contributors
+﻿// Copyright 2024 Serilog Contributors
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,7 @@ using Serilog.Sinks.MSSqlServer;
 using Serilog.Sinks.MSSqlServer.Configuration.Factories;
 
 // The "Hybrid" configuration system supports both Microsoft.Extensions.Configuration and System.Configuration.
-// This is necessary because .NET Framework 4.6.1+ and .NET Core 2.0+ apps support both approaches, whereas the
-// older .NET Framework 4.5.2 only supports System.Configuration and .NET Standard 2.0 only supports M.E.C.
+// This is necessary because .NET Framework 4.6.2+ and .NET Core 2.0+ apps support both approaches, whereas the
 
 namespace Serilog
 {
@@ -105,7 +104,7 @@ namespace Serilog
         /// <param name="sinkOptions">Supplies additional settings for the sink</param>
         /// <param name="sinkOptionsSection">A config section defining additional settings for the sink</param>
         /// <param name="appConfiguration">Additional application-level configuration. Required if connectionString is a name.</param>
-        /// <param name="restrictedToMinimumLevel">The minimum log event level required in order to write an event to the sink.</param>
+        /// <param name="restrictedToMinimumLevel">The minimum level for events passed through the sink. Ignored when LevelSwitch in <paramref name="sinkOptions"/> is specified.</param>
         /// <param name="formatProvider">Supplies culture-specific formatting information, or null.</param>
         /// <param name="columnOptions">An externally-modified group of column settings</param>
         /// <param name="columnOptionsSection">A config section defining various column settings</param>
@@ -165,7 +164,7 @@ namespace Serilog
 
             var periodicBatchingSink = batchingSinkFactory.Create(sink, sinkOptions);
 
-            return loggerConfiguration.Sink(periodicBatchingSink, restrictedToMinimumLevel);
+            return loggerConfiguration.Sink(periodicBatchingSink, restrictedToMinimumLevel, sinkOptions?.LevelSwitch);
         }
 
         /// <summary>
@@ -226,7 +225,7 @@ namespace Serilog
         /// <param name="sinkOptions">Supplies additional settings for the sink</param>
         /// <param name="sinkOptionsSection">A config section defining additional settings for the sink</param>
         /// <param name="appConfiguration">Additional application-level configuration. Required if connectionString is a name.</param>
-        /// <param name="restrictedToMinimumLevel">The minimum log event level required in order to write an event to the sink.</param>
+        /// <param name="restrictedToMinimumLevel">The minimum level for events passed through the sink. Ignored when LevelSwitch in <paramref name="sinkOptions"/> is specified.</param>
         /// <param name="formatProvider">Supplies culture-specific formatting information, or null.</param>
         /// <param name="columnOptions">An externally-modified group of column settings</param>
         /// <param name="columnOptionsSection">A config section defining various column settings</param>
@@ -282,7 +281,7 @@ namespace Serilog
 
             var auditSink = auditSinkFactory.Create(connectionString, sinkOptions, formatProvider, columnOptions, logEventFormatter);
 
-            return loggerAuditSinkConfiguration.Sink(auditSink, restrictedToMinimumLevel);
+            return loggerAuditSinkConfiguration.Sink(auditSink, restrictedToMinimumLevel, sinkOptions?.LevelSwitch);
         }
 
         private static void ReadConfiguration(

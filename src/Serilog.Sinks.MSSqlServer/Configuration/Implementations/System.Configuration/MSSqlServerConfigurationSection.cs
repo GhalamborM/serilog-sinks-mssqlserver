@@ -106,6 +106,18 @@ namespace Serilog.Configuration
             get => (StandardColumnConfigLevel)base[nameof(Level)];
         }
 
+        [ConfigurationProperty(nameof(TraceId))]
+        public StandardColumnConfigTraceId TraceId
+        {
+            get => (StandardColumnConfigTraceId)base[nameof(TraceId)];
+        }
+
+        [ConfigurationProperty(nameof(SpanId))]
+        public StandardColumnConfigSpanId SpanId
+        {
+            get => (StandardColumnConfigSpanId)base[nameof(SpanId)];
+        }
+
         [ConfigurationProperty(nameof(LogEvent))]
         public StandardColumnConfigLogEvent LogEvent
         {
@@ -151,10 +163,22 @@ namespace Serilog.Configuration
             get => (ValueConfigElement)base[nameof(SchemaName)];
         }
 
+        [ConfigurationProperty(nameof(AutoCreateSqlDatabase))]
+        public ValueConfigElement AutoCreateSqlDatabase
+        {
+            get => (ValueConfigElement)base[nameof(AutoCreateSqlDatabase)];
+        }
+
         [ConfigurationProperty(nameof(AutoCreateSqlTable))]
         public ValueConfigElement AutoCreateSqlTable
         {
             get => (ValueConfigElement)base[nameof(AutoCreateSqlTable)];
+        }
+
+        [ConfigurationProperty(nameof(EnlistInTransaction))]
+        public ValueConfigElement EnlistInTransaction
+        {
+            get => (ValueConfigElement)base[nameof(EnlistInTransaction)];
         }
 
         [ConfigurationProperty(nameof(BatchPostingLimit))]
@@ -173,30 +197,12 @@ namespace Serilog.Configuration
         public ValueConfigElement EagerlyEmitFirstEvent
         {
             get => (ValueConfigElement)base[nameof(EagerlyEmitFirstEvent)];
-            internal set
-            {
-                // Internal setter for unit testing purpose
-                base[nameof(PrimaryKeyColumnName)] = value;
-            }
         }
 
-        [ConfigurationProperty(nameof(UseAzureManagedIdentity))]
-        public ValueConfigElement UseAzureManagedIdentity
+        [ConfigurationProperty(nameof(UseSqlBulkCopy))]
+        public ValueConfigElement UseSqlBulkCopy
         {
-            get => (ValueConfigElement)base[nameof(UseAzureManagedIdentity)];
-        }
-
-        [ConfigurationProperty(nameof(AzureServiceTokenProviderResource))]
-        public ValueConfigElement AzureServiceTokenProviderResource
-        {
-            get => (ValueConfigElement)base[nameof(AzureServiceTokenProviderResource)];
-        }
-
-
-        [ConfigurationProperty(nameof(AzureTenantId))]
-        public ValueConfigElement AzureTenantId
-        {
-            get => (ValueConfigElement)base[nameof(AzureTenantId)];
+            get => (ValueConfigElement)base[nameof(UseSqlBulkCopy)];
         }
     }
 }

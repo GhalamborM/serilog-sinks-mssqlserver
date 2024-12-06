@@ -9,9 +9,6 @@ trim_trailing_whitespace = true
 [*.{csproj,json,config,yml}]
 indent_size = 2
 
-[*.sh]
-end_of_line = lf
-
 [*.{cmd,bat}]
 end_of_line = crlf
 
@@ -43,7 +40,6 @@ csharp_space_between_method_call_name_and_opening_parenthesis = false
 csharp_space_between_method_call_parameter_list_parentheses = false
 csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
 csharp_space_between_method_declaration_parameter_list_parentheses = false
-csharp_space_between_parentheses = false
 csharp_style_conditional_delegate_call = true:suggestion
 csharp_style_expression_bodied_accessors = true:silent
 csharp_style_expression_bodied_constructors = false:silent
@@ -61,12 +57,24 @@ csharp_style_var_for_built_in_types = true:warning
 csharp_style_var_when_type_is_apparent = true:warning
 csharp_using_directive_placement = outside_namespace:warning
 
+# Naming rules for non-public fields
 dotnet_naming_rule.private_members_with_underscore.symbols = private_fields
 dotnet_naming_rule.private_members_with_underscore.style = prefix_underscore
 dotnet_naming_rule.private_members_with_underscore.severity = error
 dotnet_naming_symbols.private_fields.applicable_kinds = field
-dotnet_naming_symbols.private_fields.applicable_accessibilities = private,protected
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected
 dotnet_naming_style.prefix_underscore.capitalization = camel_case
 dotnet_naming_style.prefix_underscore.required_prefix = _
+
+# Naming rules for const or static public fields
+dotnet_naming_rule.public_fields_pascal_case.symbols = public_constant_static_fields
+dotnet_naming_rule.public_fields_pascal_case.style = pascal_case
+dotnet_naming_rule.public_fields_pascal_case.severity = error
+dotnet_naming_symbols.public_constant_static_fields.applicable_kinds = field
+dotnet_naming_symbols.public_constant_static_fields.applicable_accessibilities = public
+dotnet_naming_symbols.public_constant_static_fields.required_modifiers = const, static
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
 dotnet_sort_system_directives_first = true
 dotnet_style_require_accessibility_modifiers = always:error
+

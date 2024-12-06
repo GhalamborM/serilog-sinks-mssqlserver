@@ -1,14 +1,10 @@
 ﻿using System;
-#if NET452
-using System.Data.SqlClient;
-#else
 using Microsoft.Data.SqlClient;
-#endif
+using Xunit;
 using Serilog.Sinks.MSSqlServer.Platform.SqlClient;
 using Serilog.Sinks.MSSqlServer.Tests.TestUtils;
-using Xunit;
 
-namespace Serilog.Sinks.MSSqlServer.Tests.Sinks.MSSqlServer.Platform.SqlClient
+namespace Serilog.Sinks.MSSqlServer.Tests.Platform.SqlClient
 {
     [Trait(TestCategory.TraitName, TestCategory.Unit)]
     public class SqlBulkCopyWrapperTests
